@@ -40,7 +40,7 @@ Provide access to CLI args through the binding `*command-line-args*`
 
 * Use multiple files, with related concerns in specific files, e.g. the reader is separate from the evaluator, with a separate Cargo bin for the binary with logic for the REPL and Script modes.
 
-* Make a self-contained Rust repo under `sigil-YY-MM-DD-HH-MM` where Y, M and D are the date, and H and M are the current time in UTC.
+* Make a self-contained Rust repo under `result/YY-MM-DD-HH-MM` where Y, M and D are the date, and H and M are the current time in UTC.
 
 * The crate itself can just be `sigil`.
  
