@@ -28,11 +28,17 @@ Loads file, evaluates top-level forms sequentially
 
 Provide access to CLI args through the binding `*command-line-args*`
 
-3. Validation
+## Validation
+
+### Conformance
 
 `sigil` should be capable of evaluating every part of the language as given in the spec.
 
 `sigil` should be able to run the tests in `tests/tests.sigil` with no error.
+
+### Performance
+
+Find the lowest-hanging fruit(s) in terms of performance and fix those.
 
 ## Implementation notes
 
@@ -40,10 +46,14 @@ Provide access to CLI args through the binding `*command-line-args*`
 
 * Use multiple files, with related concerns in specific files, e.g. the reader is separate from the evaluator, with a separate Cargo bin for the binary with logic for the REPL and Script modes.
 
-* Make a self-contained Rust repo under `result/YY-MM-DD-HH-MM` where Y, M and D are the date, and H and M are the current time in UTC.
+* Make a self-contained Rust repo under `result/YY-MM-DD-HH-MM-GITCOMMIT` where Y, M, D, H, and M are the date/time in UTC, and GITCOMMIT is the short commit hash of this repo.
 
-* The crate itself can just be `sigil`.
+* The name of the package itself can just be `sigil`.
  
 * Keep dependencies minimal, but feel free to use popular ones if they expedite implementation (e.g. the persistent data structures).
 
-* Feel free to take notes as you go under the crate root, if it helps implementation later.
+* The REPL should have history and Emacs like keybindings for navigation at the prompt.
+
+* Take notes as you go under the package root `notes/*.md`, so others can follow your thought process.
+
+* Keep code simple. Do not add unnecessary functions or variables.
