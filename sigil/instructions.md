@@ -4,8 +4,6 @@
 
 Build an interpreter in Rust that follows spec.md.
 
-Make a self-contained Rust repo under `sigil-YY-MM-DD-HH-MM` where Y, M and D are the date, and H and M are the current time in UTC.
-
 The interpreter should provide a single binary, e.g. `sigil`, with the following functionality:
 
 1. REPL mode
@@ -41,3 +39,11 @@ Provide access to CLI args through the binding `*command-line-args*`
 * The `core` namespace MUST only contain the names in the spec and no others.
 
 * Use multiple files, with related concerns in specific files, e.g. the reader is separate from the evaluator, with a separate Cargo bin for the binary with logic for the REPL and Script modes.
+
+* Make a self-contained Rust repo under `sigil-YY-MM-DD-HH-MM` where Y, M and D are the date, and H and M are the current time in UTC.
+
+* The crate itself can just be `sigil`.
+ 
+* Keep dependencies minimal, but feel free to use popular ones if they expedite implementation (e.g. the persistent data structures).
+
+* Feel free to take notes as you go under the crate root, if it helps implementation later.
