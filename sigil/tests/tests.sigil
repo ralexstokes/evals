@@ -1,17 +1,63 @@
 (ns some-tests)
 
+(def! assert! (fn* [x msg]
+  (if (not x)
+    (throw msg))))
+
+(assert! (= 3 (+ 1 2)) :add)
+(assert! (= 1/2 (/ 1 2)) :ratio)
+(assert! (= :some-tests/a ::a) :autokw)
+
+(def! z 1)
+(set! z 2)
+(assert! (= z 2) :set)
+(assert! (= #'some-tests/z (var z)) :var)
+
+(assert! (= [2 3 4] (map (fn* [x] (+ x 1)) [1 2 3])) :map)
+(assert! (= [3 5] (map + [1 2] [2 3])) :map2)
+(assert! (= 6 (apply + [1 2 3])) :apply)
+(assert! (= '(some-tests/a some-tests/b) `(a b)) :syntax-quote)
+(assert! (= [1 2 3 4]
+            (let* [[a b & rest :as all] [1 2 3 4]]
+              (concat [a b] rest)))
+         :vec-destructure)
+(assert! (= 7
+            (let* [{:keys [x] :or {x 9} :as m} {:x 7}]
+              x))
+         :map-destructure)
+(assert! (= 9
+            (let* [{:keys [x] :or {x 9}} {}]
+              x))
+         :map-default)
+(assert! (= 6
+            (loop* [n 3 acc 0]
+              (if (= n 0)
+                acc
+                (recur (dec n) (+ acc n)))))
+         :loop)
+
+(defmacro unless [pred body]
+  `(if ~pred nil ~body))
+(assert! (= 5 (unless false 5)) :macro)
+
+(def! a (atom 1))
+(reset! a 2)
+(assert! (= 2 @a) :atom)
+(swap! a + 3)
+(assert! (= 5 @a) :swap)
+
+(assert! (= :foo (try* (/ 1 0) (catch e :foo))) :try)
+
 (def! ex-info (fn* [cause data]
                    {:cause cause
                     :data data}))
 
 (def! assert-eq! (fn* [a b]
                       (if (not (= a b))
-                        (throw (ex-info "assertion failed" [a b])))))
+                        (throw (ex-info "assertion of equality failed" [a b])))))
 
-(def! run-test (fn* [test-case]
-                    (let* [input-source (nth test-case 0)
-                           expected-result (nth test-case 1)
-                           result (eval (read-string input-source))]
+(def! run-test (fn* [[input-source expected-result]]
+                    (let* [result (eval (read-string input-source))]
                           (assert-eq! expected-result result))))
 
 (def! run-suite (fn* [suite]
@@ -29,3 +75,5 @@
                   ["(try* (/ 1 0) (catch _ :foo))" :foo]])
 
 (run-suite some-suite)
+
+(println :ok)

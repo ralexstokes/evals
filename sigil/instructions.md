@@ -50,7 +50,7 @@ Find the lowest-hanging fruit(s) in terms of performance and fix those.
 
 * The name of the package itself can just be `sigil`.
  
-* Keep dependencies minimal, but feel free to use popular ones if they expedite implementation (e.g. the persistent data structures).
+* Keep dependencies minimal, but use popular ones if they expedite implementation (e.g. the persistent data structures).
 
 * The REPL should have history and Emacs like keybindings for navigation at the prompt.
 
