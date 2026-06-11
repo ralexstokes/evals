@@ -63,7 +63,8 @@ Delimited by `"`.
 Supported escapes:
 
 * `\n`, `\t`, `\\`, `\"`
-* `\uXXXX` (4 hex digits)
+* `\uXXXX` (4 hex digits; the reader accepts both uppercase and lowercase
+  hex letters)
 
 Invalid escape → reader error. A `\uXXXX` escape in the surrogate range
 `D800` through `DFFF` MUST produce a reader error.
@@ -193,7 +194,9 @@ Sigil values:
 * function (closure)
 * atom
 
-Metadata MAY be attached to any value type that supports it.
+Metadata is supported on exactly these value types: list, vector, hash-map,
+hash-set, symbol, and function. `with-meta` on any other type MUST throw
+`:error/type`.
 
 Metadata MUST NOT affect equality or hashing.
 
@@ -247,9 +250,14 @@ Readable output MUST use these forms:
   `##Inf`, and `##-Inf`. Finite doubles printed with exponent notation MUST
   use lowercase `e`, omit `+` on positive exponents, and omit leading zeroes
   in the exponent unless the exponent is zero.
-* Strings print quoted, with `\n`, `\t`, `\\`, `\"`, and `\uXXXX` escapes as
-  needed.
-* Characters print as `\newline`, `\space`, `\tab`, `\uXXXX`, or `\c`.
+* Strings print quoted. Within the quotes, `\n`, `\t`, `\\`, and `\"` print as
+  those two-character escapes; every other control character (U+0000 through
+  U+001F, and U+007F) prints as `\uXXXX` with four hex digits using lowercase
+  letters; all remaining scalars print as themselves.
+* Characters print as `\newline`, `\space`, or `\tab` when they are those
+  scalars; every other control character (U+0000 through U+001F, and U+007F)
+  prints as `\uXXXX` with four hex digits using lowercase letters; all
+  remaining scalars print as `\c`.
 * Lists print as `(a b c)` and vectors as `[a b c]`.
 * Maps print as `{k v ...}` and sets as `#{a b c}`.
 * Vars print as `#'ns/name`.
@@ -336,7 +344,14 @@ Let `a`, `b` integers, `b ≠ 0`.
   * Else if `sign(rem) == sign(b)` → rem
   * Else → `rem + b`
 
-Non-integer input to these functions → error.
+A zero divisor for `quot`, `rem`, or `mod` MUST throw `:error/arithmetic`.
+
+Non-integer input to these functions MUST throw `:error/type`.
+
+`/` with an exact (bigint or ratio) zero divisor MUST throw
+`:error/arithmetic`. If either operand of `/` is a double, the operation is
+performed in the double domain under IEEE-754, so division by zero yields
+`##Inf`, `##-Inf`, or `##NaN` rather than throwing.
 
 ---
 
@@ -375,6 +390,8 @@ returns `nil`.
 * Switch current namespace.
 * Creates if missing.
 
+Both `(ns name)` and `(in-ns 'name)` return `nil`.
+
 ---
 
 ## 6.3 Vars
@@ -393,12 +410,14 @@ A Var contains:
 
 ### `(var sym)`
 
-Returns Var object.
+Returns Var object. If `sym` does not resolve to a Var, `(var sym)` MUST throw
+`:error/unresolved`.
 
 ### Dereferencing Vars
 
 `(deref var)` and `@var` MUST return the Var's current root binding when their
-operand is a Var.
+operand is a Var. `deref` on a value that is neither an atom nor a Var MUST
+throw `:error/type`.
 
 ### Resolution
 
@@ -422,6 +441,8 @@ Unresolved symbol → error.
 * MUST NOT refer to lexical binding.
 * If `sym` resolves to a lexical binding, `set!` MUST throw `:error/type` and
   MUST NOT mutate any Var.
+* If `sym` resolves to neither a lexical binding nor a Var, `set!` MUST throw
+  `:error/unresolved`.
 * Sets root binding.
 * Returns new value.
 
@@ -561,6 +582,8 @@ Sequential binding.
 ## 9.4 `loop*` and `recur`
 
 * `recur` MUST appear in tail position.
+* The behavior of a program in which `recur` appears outside tail position is
+  unspecified; conforming programs and tests MUST NOT contain one.
 * `recur` targets the nearest enclosing `loop*` bindings or `fn*` parameters.
 * Arity must match the target's binding or parameter count.
 * Arity mismatch MUST throw `:error/arity`.
@@ -665,7 +688,8 @@ Where:
   * Let `Ei = SQ(ei)`
   * chunk → `(list Ei)`
 
-`~@` invalid outside list/vector.
+`~@` outside a list or vector context (including directly under syntax-quote)
+MUST throw `:error/reader` at read time.
 
 ---
 
@@ -684,7 +708,7 @@ Chunk rules identical to list.
 
 ### 11.5 Maps
 
-`~@` invalid in map.
+`~@` in a map MUST throw `:error/reader` at read time.
 
 `SQ({k v ...})` → map literal where each key/value is replaced by `SQexpr`.
 
@@ -692,7 +716,7 @@ Chunk rules identical to list.
 
 ### 11.6 Sets
 
-`~@` invalid in set.
+`~@` in a set MUST throw `:error/reader` at read time.
 
 `SQ(#{e1 ...})` → set literal with `SQexpr` elements.
 
@@ -742,18 +766,21 @@ Collection functions operate on these sequenceable values:
 collection, otherwise it returns a list.
 
 `nth` accepts two or three arguments: `(nth coll index)` and
-`(nth coll index default)`. `index` MUST be a non-negative integer. If `index`
-is in bounds, `nth` returns the item at that zero-based position in the
-sequenceable view of `coll`. If `index` is out of bounds and a default is
-provided, `nth` returns the default. If `index` is out of bounds without a
-default, `nth` throws `:error/index`.
+`(nth coll index default)`. `index` MUST be a non-negative integer. A negative
+integer `index` MUST throw `:error/index` (the default, if any, is not
+returned); a non-integer `index` MUST throw `:error/type`. If `index` is in
+bounds, `nth` returns the item at that zero-based position in the sequenceable
+view of `coll`. If `index` is out of bounds and a default is provided, `nth`
+returns the default. If `index` is out of bounds without a default, `nth`
+throws `:error/index`.
 
 `get` accepts two or three arguments: `(get coll key)` and
 `(get coll key default)`. For maps, it returns the value for `key` or the
 default. For sets, it returns the equal set element or the default. For `nil`,
 it returns the default. If no default is supplied, the default is `nil`.
-Calling `get` on any other type throws `:error/type`. Keywords and maps MUST
-NOT be callable as functions.
+Calling `get` on any other type throws `:error/type`. Only functions are
+callable: applying a keyword, map, vector, set, symbol, or any other
+non-function value as the operator of a call MUST throw `:error/type`.
 
 `read-string` MUST read the first complete form from its string argument and
 ignore trailing input. An empty or whitespace-only string MUST throw
@@ -807,8 +834,14 @@ In REPL mode, prompts MUST be written to stdout, including when stdin is not a
 TTY. When stdin is not a TTY, implementations MUST bypass interactive line
 editing but MUST still emit the same prompts. The REPL reads one complete form
 at a time; if a form is incomplete at the end of a line, it MUST continue
-reading until the form is complete. EOF while a form is incomplete MUST produce
-`:error/reader`.
+reading until the form is complete. Continuation lines of an incomplete form
+MUST NOT produce additional prompts. EOF while a form is incomplete MUST
+produce `:error/reader`, which the REPL reports as an uncaught throw.
+
+On EOF at the top level, the REPL MUST exit with status code 0. A prompt MUST
+NOT be emitted when it would be immediately followed by end of input: when
+stdin is exhausted, the REPL exits without printing a further prompt, which
+requires detecting EOF before emitting the next prompt.
 
 In REPL mode, an uncaught throw MUST print exactly one line to stdout using
 readable output with this prefix:

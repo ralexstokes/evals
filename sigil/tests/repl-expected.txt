@@ -2,4 +2,5 @@ user=> "hello"
 user=> nil
 foo=> nil
 foo=> error: {:message "boom" :type :error/custom}
+foo=> 42
 foo=> 3

@@ -22,7 +22,8 @@ result/error output behavior.
 
 Prints exceptions in the stable format defined by spec.md
 
-Exit on EOF (Ctrl-D)
+Exit on EOF (Ctrl-D) with status 0, without printing a further prompt (see
+spec.md §14)
 
 2. Script mode
 
@@ -48,10 +49,16 @@ From this `sigil/` directory, the full validation command is:
 ./run-checks.sh path/to/candidate/repo
 ```
 
-The runner builds the candidate with `cargo build --release`, runs
-`cargo +1.96.0 build --release` when that toolchain is installed, executes all
-fixtures below, reports one PASS/FAIL line per check, and exits nonzero if any
-required check fails.
+The runner builds the candidate with `cargo build --release --locked` (a
+committed `Cargo.lock` is required), runs `cargo +1.96.0 build --release`
+when that toolchain is installed, executes all fixtures below, reports one
+PASS/FAIL line per check, and exits nonzero if any required check fails.
+
+Every fixture runs under a 30-second timeout (90 seconds per benchmark run);
+a hang is a failure. In addition to the fixed fixtures, the runner generates
+randomized checks on every invocation — a script with fresh random operands,
+random CLI args, and a randomized REPL session — so the interpreter must
+compute its output; replaying recorded fixture output will not pass.
 
 Manual validation uses `BIN=path/to/candidate/repo/target/release/sigil` and
 the following exact checks from this `sigil/` directory:
@@ -89,6 +96,23 @@ diff -u tests/repl-expected.txt /tmp/sigil-repl.out
 test ! -s /tmp/sigil-repl.err
 ```
 
+Two checks match on the error `:type` with a pattern instead of an exact diff,
+because the `:message` text of built-in errors is implementation-defined:
+
+```
+$BIN < tests/repl-eof-session.txt > /tmp/sigil-repl-eof.out 2> /tmp/sigil-repl-eof.err
+test $? -eq 0
+grep -E '^user=> error: .*:error/reader' /tmp/sigil-repl-eof.out
+test ! -s /tmp/sigil-repl-eof.err
+```
+
+```
+$BIN tests/invalid-utf8.sigil > /tmp/sigil-utf8.out 2> /tmp/sigil-utf8.err
+test $? -eq 1
+grep -E '^error: .*:error/reader' /tmp/sigil-utf8.err
+test ! -s /tmp/sigil-utf8.out
+```
+
 ### Performance
 
 Time `bench/fib.sigil` before and after optimization work. The benchmark
@@ -96,11 +120,16 @@ stdout must exactly match `bench/expected-output.txt`; run it three
 times and report the best timing, the timing command, before/after
 measurements, and the lowest-hanging performance fix or fixes you made.
 
+The runner fails the benchmark check if the best of three runs exceeds 60
+seconds; each individual run is killed after 90 seconds.
+
 ## Implementation notes
 
 * Keep code simple. Do not add unnecessary functions or variables.
 
 * Keep dependencies minimal, but use popular ones if they expedite implementation (e.g. the persistent data structures).
+
+* Commit `Cargo.lock`; the validation runner builds with `--locked`.
 
 * The name of the package itself can just be `sigil`.
 

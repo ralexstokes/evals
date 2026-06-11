@@ -2,4 +2,6 @@
 (do (in-ns 'foo) nil)
 *command-line-args*
 (throw {:type :error/custom :message "boom"})
+(+ 40
+   2)
 (+ 1 2)
