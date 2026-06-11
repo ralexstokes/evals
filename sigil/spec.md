@@ -54,6 +54,8 @@ Normative keywords: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 
   * MUST normalize to lowest terms.
   * Denominator MUST be positive.
+  * The reader MUST accept signs on either side of `/`; for example, `1/-2`
+    reads and normalizes to `-1/2`.
 
 ### 2.2.2 Strings
 
@@ -242,7 +244,9 @@ Readable output MUST use these forms:
   tokens.
 * Doubles print with the shortest round-trip decimal representation. Finite
   integral doubles MUST include `.0`. Non-finite doubles print as `##NaN`,
-  `##Inf`, and `##-Inf`.
+  `##Inf`, and `##-Inf`. Finite doubles printed with exponent notation MUST
+  use lowercase `e`, omit `+` on positive exponents, and omit leading zeroes
+  in the exponent unless the exponent is zero.
 * Strings print quoted, with `\n`, `\t`, `\\`, `\"`, and `\uXXXX` escapes as
   needed.
 * Characters print as `\newline`, `\space`, `\tab`, `\uXXXX`, or `\c`.
@@ -288,6 +292,9 @@ Else:
 
 `/` on two integers MUST return ratio.
 
+After exact arithmetic, any ratio result with denominator `1` MUST normalize
+to a bigint value.
+
 ---
 
 ## 5.3 Required Numeric Functions
@@ -298,9 +305,24 @@ Else:
 * `zero? pos? neg?`
 * `quot rem mod`
 
+`+` accepts zero or more arguments and returns `0` with zero arguments. `*`
+accepts zero or more arguments and returns `1` with zero arguments.
+
+`-` accepts one or more arguments. With one argument, it returns the numeric
+negation of that argument. With zero arguments, it MUST throw `:error/arity`.
+
+`/` accepts one or more arguments. With one argument, it returns the reciprocal
+of that argument. With zero arguments, it MUST throw `:error/arity`.
+
+`=` accepts one or more arguments. With one argument, it returns `true`; with
+multiple arguments, it compares each adjacent pair.
+
 Ordering comparisons `<`, `<=`, `>`, and `>=` MUST accept any numeric types and
 compare by numeric value. If any operand is a double, comparison is in the
-double domain. Any comparison involving NaN MUST return false.
+double domain. Any comparison involving NaN MUST return false. Ordering
+comparisons require at least one argument; with one argument they return
+`true`, and with multiple arguments they compare each adjacent pair in the
+chain.
 
 ### Integer division semantics
 
@@ -329,6 +351,8 @@ Namespace contains:
 * alias → namespace mappings
 
 A global namespace registry MUST exist.
+
+The required core namespace is named `core`.
 
 Aliases are created with `(alias 'alias-name 'namespace-name)`. The target
 namespace MUST already exist. The alias is added to the current namespace's
@@ -539,6 +563,7 @@ Sequential binding.
 * `recur` MUST appear in tail position.
 * `recur` targets the nearest enclosing `loop*` bindings or `fn*` parameters.
 * Arity must match the target's binding or parameter count.
+* Arity mismatch MUST throw `:error/arity`.
 * Must not grow stack.
 
 ---
@@ -598,6 +623,10 @@ Evaluation MUST macroexpand before applying.
 # 11. Syntax-Quote
 
 Define recursive function `SQ(form)`.
+
+Nested syntax-quote behavior is unspecified. Conforming programs and tests
+MUST NOT depend on the expansion of a syntax-quote form that appears inside
+another syntax-quote form.
 
 ### 11.1 Symbols
 
@@ -730,6 +759,11 @@ NOT be callable as functions.
 ignore trailing input. An empty or whitespace-only string MUST throw
 `:error/reader`.
 
+`apply` MUST accept a function, zero or more leading arguments, and one final
+sequenceable argument. `(apply f a b [c d])` is equivalent to `(f a b c d)`.
+The final argument MUST be sequenceable; otherwise `apply` MUST throw
+`:error/type`.
+
 ---
 
 # 13. Atoms
@@ -769,8 +803,15 @@ Examples of required runtime errors:
 `throw` MAY throw any Sigil value. `try*` catches both user-thrown values and
 built-in runtime error values.
 
-In REPL mode, an uncaught throw MUST print exactly one line using readable
-output with this prefix:
+In REPL mode, prompts MUST be written to stdout, including when stdin is not a
+TTY. When stdin is not a TTY, implementations MUST bypass interactive line
+editing but MUST still emit the same prompts. The REPL reads one complete form
+at a time; if a form is incomplete at the end of a line, it MUST continue
+reading until the form is complete. EOF while a form is incomplete MUST produce
+`:error/reader`.
+
+In REPL mode, an uncaught throw MUST print exactly one line to stdout using
+readable output with this prefix:
 
 ```
 error: <value>
@@ -782,4 +823,5 @@ A script that completes without an uncaught throw MUST exit with status code 0.
 
 The core namespace MUST contain the Var `*command-line-args*`. In script mode,
 its root binding MUST be a vector of strings containing the arguments after the
-script path. In REPL mode, its root binding MUST be `nil`.
+script path. If no arguments follow the script path, the vector MUST be empty.
+In REPL mode, its root binding MUST be `nil`.
