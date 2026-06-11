@@ -1,0 +1,5 @@
+user=> "hello"
+user=> nil
+foo=> nil
+foo=> error: {:message "boom" :type :error/custom}
+foo=> 3

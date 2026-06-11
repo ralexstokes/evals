@@ -1,0 +1,3 @@
+(ns args-test)
+
+(println (pr-str *command-line-args*))

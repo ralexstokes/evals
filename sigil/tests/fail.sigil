@@ -1,0 +1,5 @@
+(ns fail-test)
+
+(println "before throw")
+(println "still running")
+(throw {:type :error/custom :message "boom"})
