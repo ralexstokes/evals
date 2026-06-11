@@ -53,7 +53,7 @@ fixes you made.
 
 * The name of the package itself can just be `sigil`.
 
-* Use Rust 2021 edition. The minimum supported Rust version is 1.78.
+* Use Rust 2021 edition. The minimum supported Rust version is 1.96.0.
 
 * Use persistent data structures for `list`, `vector`, `hash-map`, and `hash-set` types.
 
