@@ -3,17 +3,33 @@
 (defmacro unless [pred body]
   `(if ~pred nil ~body))
 
-(def! fib (fn* [n]
+(def! fib-rec (fn* [n]
+  (if (< n 2)
+    n
+    (+ (fib-rec (- n 1)) (fib-rec (- n 2))))))
+
+(def! count-loop (fn* [n]
+  (loop* [i 0]
+    (if (= i n)
+      i
+      (recur (inc i))))))
+
+(def! fib-iter (fn* [n]
   (loop* [a 0 b 1 i n]
     (if (= i 0)
       a
       (recur b (+ a b) (dec i))))))
 
 (def! macroexpand-loop (fn* [n]
-  (loop* [i n acc nil]
+  (loop* [i n hits 0]
     (if (= i 0)
-      acc
-      (recur (dec i) (macroexpand-1 '(unless false 1)))))))
+      hits
+      (recur (dec i)
+             (if (= (macroexpand-1 '(unless false 1)) '(if false nil 1))
+               (inc hits)
+               hits))))))
 
-(println "fib(30) =" (fib 30))
+(println "fib-rec(27) =" (fib-rec 27))
+(println "count-loop =" (count-loop 10000000))
+(println "fib-big-rem =" (rem (fib-iter 10000) 1000000007))
 (println "macroexpand-loop =" (macroexpand-loop 10000))

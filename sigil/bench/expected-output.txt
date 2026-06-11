@@ -1,0 +1,4 @@
+fib-rec(27) = 196418
+count-loop = 10000000
+fib-big-rem = 271496360
+macroexpand-loop = 10000
