@@ -42,7 +42,7 @@ With no args after the script path, `*command-line-args*` is `[]`.
 
 `sigil` should be capable of evaluating every part of the language as given in the spec.
 
-From the repository root, the full validation command is:
+From this `sigil/` directory, the full validation command is:
 
 ```
 ./run-checks.sh path/to/candidate/repo
@@ -54,45 +54,45 @@ fixtures below, reports one PASS/FAIL line per check, and exits nonzero if any
 required check fails.
 
 Manual validation uses `BIN=path/to/candidate/repo/target/release/sigil` and
-the following exact checks from the repository root:
+the following exact checks from this `sigil/` directory:
 
 ```
-$BIN sigil/tests/tests.sigil > /tmp/sigil-tests.out 2> /tmp/sigil-tests.err
+$BIN tests/tests.sigil > /tmp/sigil-tests.out 2> /tmp/sigil-tests.err
 test $? -eq 0
-diff -u sigil/tests/expected-output.txt /tmp/sigil-tests.out
+diff -u tests/expected-output.txt /tmp/sigil-tests.out
 test ! -s /tmp/sigil-tests.err
 ```
 
 ```
-$BIN sigil/tests/fail.sigil > /tmp/sigil-fail.out 2> /tmp/sigil-fail.err
+$BIN tests/fail.sigil > /tmp/sigil-fail.out 2> /tmp/sigil-fail.err
 test $? -eq 1
-diff -u sigil/tests/fail-expected-output.txt /tmp/sigil-fail.out
-diff -u sigil/tests/fail-expected-stderr.txt /tmp/sigil-fail.err
+diff -u tests/fail-expected-output.txt /tmp/sigil-fail.out
+diff -u tests/fail-expected-stderr.txt /tmp/sigil-fail.err
 ```
 
 ```
-$BIN sigil/tests/args.sigil a b c > /tmp/sigil-args.out 2> /tmp/sigil-args.err
+$BIN tests/args.sigil a b c > /tmp/sigil-args.out 2> /tmp/sigil-args.err
 test $? -eq 0
-diff -u sigil/tests/args-expected-output.txt /tmp/sigil-args.out
+diff -u tests/args-expected-output.txt /tmp/sigil-args.out
 test ! -s /tmp/sigil-args.err
 
-$BIN sigil/tests/args.sigil > /tmp/sigil-args-empty.out 2> /tmp/sigil-args-empty.err
+$BIN tests/args.sigil > /tmp/sigil-args-empty.out 2> /tmp/sigil-args-empty.err
 test $? -eq 0
-diff -u sigil/tests/args-empty-expected-output.txt /tmp/sigil-args-empty.out
+diff -u tests/args-empty-expected-output.txt /tmp/sigil-args-empty.out
 test ! -s /tmp/sigil-args-empty.err
 ```
 
 ```
-$BIN < sigil/tests/repl-session.txt > /tmp/sigil-repl.out 2> /tmp/sigil-repl.err
+$BIN < tests/repl-session.txt > /tmp/sigil-repl.out 2> /tmp/sigil-repl.err
 test $? -eq 0
-diff -u sigil/tests/repl-expected.txt /tmp/sigil-repl.out
+diff -u tests/repl-expected.txt /tmp/sigil-repl.out
 test ! -s /tmp/sigil-repl.err
 ```
 
 ### Performance
 
-Time `sigil/bench/fib.sigil` before and after optimization work. The benchmark
-stdout must exactly match `sigil/bench/expected-output.txt`; run it three
+Time `bench/fib.sigil` before and after optimization work. The benchmark
+stdout must exactly match `bench/expected-output.txt`; run it three
 times and report the best timing, the timing command, before/after
 measurements, and the lowest-hanging performance fix or fixes you made.
 

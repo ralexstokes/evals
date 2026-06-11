@@ -2,8 +2,7 @@
 
 set -u
 
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-SIGIL_DIR="$ROOT/sigil"
+SIGIL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 EMPTY_FILE=""
 FAILURES=0
 
