@@ -49,6 +49,7 @@ Normative keywords: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 * `nil`, `true`, `false`
 * Integers: arbitrary precision decimal, optional leading sign.
 * Floats: decimal with dot and/or exponent (`e`/`E`), IEEE-754 double.
+* Non-finite doubles: `##NaN`, `##Inf`, `##-Inf`.
 * Ratios: `a/b` where `a`, `b` are integers and `b ≠ 0`.
 
   * MUST normalize to lowest terms.
@@ -128,7 +129,8 @@ Set duplicates collapse.
 | `#'sym`  | `(var sym)`      |
 | `#_`     | discard          |
 
-Any other `#` dispatch is an error.
+Any other `#` dispatch is an error. The non-finite double tokens `##NaN`,
+`##Inf`, and `##-Inf` are scalar literals, not dispatch macros.
 
 ---
 
@@ -394,6 +396,8 @@ Unresolved symbol → error.
 
 * `sym` MUST resolve to a Var.
 * MUST NOT refer to lexical binding.
+* If `sym` resolves to a lexical binding, `set!` MUST throw `:error/type` and
+  MUST NOT mutate any Var.
 * Sets root binding.
 * Returns new value.
 
@@ -431,6 +435,16 @@ Supports:
 * nested patterns
 
 Missing keys bind to nil unless overridden by `:or`.
+
+Map destructuring keys are derived as follows:
+
+* `:keys [x]` binds `x` from keyword key `:x`.
+* `:syms [x]` binds `x` from symbol key `'x`.
+* `:strs [x]` binds `x` from string key `"x"`.
+* Explicit map entries are `binding-form lookup-key` pairs; `lookup-key` is
+  used as a literal lookup key and is not evaluated.
+* `:or` maps binding symbols to default values.
+* `:as` binds the complete input map.
 
 ---
 

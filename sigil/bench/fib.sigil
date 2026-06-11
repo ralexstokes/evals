@@ -1,0 +1,19 @@
+(ns bench-fib)
+
+(defmacro unless [pred body]
+  `(if ~pred nil ~body))
+
+(def! fib (fn* [n]
+  (loop* [a 0 b 1 i n]
+    (if (= i 0)
+      a
+      (recur b (+ a b) (dec i))))))
+
+(def! macroexpand-loop (fn* [n]
+  (loop* [i n acc nil]
+    (if (= i 0)
+      acc
+      (recur (dec i) (macroexpand-1 '(unless false 1)))))))
+
+(println "fib(30) =" (fib 30))
+(println "macroexpand-loop =" (macroexpand-loop 10000))

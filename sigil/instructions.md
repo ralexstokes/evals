@@ -12,9 +12,11 @@ The interpreter should provide a single binary, e.g. `sigil`, with the following
 
 REPL starts in `user` namespace
 
+Prompt with `<current-namespace>=> `; the initial prompt is exactly `user=> `
+
 Reads one form at a time, evaluates, prints result
 
-Prints exceptions in a stable, test-friendly way
+Prints exceptions in the stable format defined by spec.md
 
 Exit on EOF (Ctrl-D)
 
@@ -34,11 +36,14 @@ Provide access to CLI args through the binding `*command-line-args*`
 
 `sigil` should be capable of evaluating every part of the language as given in the spec.
 
-`sigil` should be able to run the tests in `tests/tests.sigil` with no error.
+`sigil` should run `tests/tests.sigil` to completion with exit code 0 and
+stdout exactly matching `tests/expected-output.txt`.
 
 ### Performance
 
-Find the lowest-hanging fruit(s) in terms of performance and fix those.
+Time `bench/fib.sigil` before and after optimization work. Report the timing
+command, before/after measurements, and the lowest-hanging performance fix or
+fixes you made.
 
 ## Implementation notes
 
@@ -47,6 +52,8 @@ Find the lowest-hanging fruit(s) in terms of performance and fix those.
 * Keep dependencies minimal, but use popular ones if they expedite implementation (e.g. the persistent data structures).
 
 * The name of the package itself can just be `sigil`.
+
+* Use Rust 2021 edition. The minimum supported Rust version is 1.78.
 
 * Use persistent data structures for `list`, `vector`, `hash-map`, and `hash-set` types.
 
@@ -59,7 +66,9 @@ Find the lowest-hanging fruit(s) in terms of performance and fix those.
 
 * Use multiple files, with related concerns in specific files, e.g. the reader is separate from the evaluator, with a separate Cargo bin for the binary with logic for the REPL and Script modes.
 
-* Make a self-contained Rust repo under `result/YY-MM-DD-HH-MM-GITCOMMIT` where Y, M, D, H, and M are the date/time in UTC, and GITCOMMIT is the short commit hash of this repo.
+* Make a self-contained Rust repo under `result/YY-MM-DD-HH-MM-GITCOMMIT`,
+  where `YY-MM-DD-HH-MM` is the zero-padded UTC timestamp formatted with
+  `%y-%m-%d-%H-%M`, and `GITCOMMIT` is the short commit hash of this repo.
 
 * There may be other attempts under `result/`; do NOT reference them in your own work.
 
