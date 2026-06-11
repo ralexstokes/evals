@@ -19,6 +19,7 @@ Normative keywords: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 * [11. Syntax-Quote](#11-syntax-quote)
 * [12. Core Required Functions](#12-core-required-functions)
 * [13. Atoms](#13-atoms)
+* [14. Errors and Program Execution](#14-errors-and-program-execution)
 
 ---
 
@@ -129,6 +130,40 @@ Any other `#` dispatch is an error.
 
 ---
 
+### 2.3.1 Function Literals
+
+`#(form)` reads as `(fn* [params...] form)` with implicit parameters derived
+from placeholder symbols in `form`.
+
+* `%` is equivalent to `%1`.
+* `%N`, where `N` is a positive decimal integer, names the Nth positional
+  argument.
+* `%&` names the rest argument.
+* The fixed arity is the highest `%N` used. If no `%N` or `%` placeholder is
+  used, the fixed arity is zero.
+* If `%&` is used, the generated `fn*` is variadic.
+* A nested `#(...)` inside another `#(...)` is a reader error.
+
+Reader-generated parameter symbols MUST NOT capture or conflict with user
+symbols in the function body.
+
+---
+
+### 2.3.2 Metadata Reader Syntax
+
+`^m x` attaches metadata to `x`.
+
+* `^{...}` uses the map as metadata.
+* `^:kw` is equivalent to `^{:kw true}`.
+* `^sym` is equivalent to `^{:tag sym}`.
+* Any other metadata form is a reader error.
+
+Multiple metadata prefixes are allowed and stack right-to-left. Metadata maps
+MUST be merged in application order; later applications replace earlier values
+for duplicate keys.
+
+---
+
 # 3. Runtime Model
 
 ## 3.1 Value Types
@@ -179,7 +214,8 @@ Metadata MUST NOT affect equality or hashing.
 * bigint vs bigint → exact.
 * ratio vs ratio → exact.
 * bigint vs ratio → exact rational comparison.
-* double involved → comparison in double domain.
+* double vs double → IEEE-754 numeric comparison.
+* double vs any non-double numeric type → not equal.
 * NaN is not equal to anything, including itself.
 
 ---
@@ -192,15 +228,37 @@ Map/set hashes MUST be order-independent.
 
 ---
 
-## 4.3 Deterministic Printing
+## 4.3 Printing
 
-Map and set printed representations MUST be deterministic.
+Sigil defines two printed representations: readable and human.
 
-Recommended rule:
+Readable output MUST use these forms:
 
-* Sort entries by `pr-str` of key (maps) or element (sets) before printing.
+* `nil`, booleans, symbols, keywords, bigints, and ratios print as their source
+  tokens.
+* Doubles print with the shortest round-trip decimal representation. Finite
+  integral doubles MUST include `.0`. Non-finite doubles print as `##NaN`,
+  `##Inf`, and `##-Inf`.
+* Strings print quoted, with `\n`, `\t`, `\\`, `\"`, and `\uXXXX` escapes as
+  needed.
+* Characters print as `\newline`, `\space`, `\tab`, `\uXXXX`, or `\c`.
+* Lists print as `(a b c)` and vectors as `[a b c]`.
+* Maps print as `{k v ...}` and sets as `#{a b c}`.
+* Vars print as `#'ns/name`.
+* Functions print as `#<function>`.
+* Atoms print as `#<atom readable-value>`.
 
-Internal iteration order need not be deterministic, but printing MUST be.
+Map and set readable output MUST be deterministic. Map entries MUST be sorted
+by the readable representation of the key. Set elements MUST be sorted by their
+readable representation. Internal iteration order need not be deterministic.
+
+Human output is the same as readable output except strings and characters print
+as their raw scalar values, without quotes or reader escapes. `print` and
+`println` use human output, join multiple arguments with a single space, and
+write arguments in left-to-right order. `print` writes no trailing newline;
+`println` writes one trailing newline. The REPL prints evaluation results with
+readable output. `pr-str` returns the readable output of its arguments joined
+with a single space.
 
 ---
 
@@ -236,6 +294,10 @@ Else:
 * `zero? pos? neg?`
 * `quot rem mod`
 
+Ordering comparisons `<`, `<=`, `>`, and `>=` MUST accept any numeric types and
+compare by numeric value. If any operand is a double, comparison is in the
+double domain. Any comparison involving NaN MUST return false.
+
 ### Integer division semantics
 
 Let `a`, `b` integers, `b ≠ 0`.
@@ -263,6 +325,11 @@ Namespace contains:
 * alias → namespace mappings
 
 A global namespace registry MUST exist.
+
+Aliases are created with `(alias 'alias-name 'namespace-name)`. The target
+namespace MUST already exist. The alias is added to the current namespace's
+alias map, replacing any previous mapping for the same alias name, and the form
+returns `nil`.
 
 ---
 
@@ -579,7 +646,7 @@ Core namespace MUST provide:
 
 * `+ - * /`
 * `< <= > >= =`
-* `print println read-string`
+* `print println pr-str read-string`
 * `not`
 * `inc dec`
 * `zero? pos? neg?`
@@ -592,6 +659,7 @@ Core namespace MUST provide:
 * `first rest nth concat`
 * `eval`
 * `apply`
+* `alias`
 
 Core MUST be auto-referred by `(ns ...)`.
 
@@ -610,3 +678,41 @@ MUST return either `nil` or a list.
 * `(swap! a f args...)`
 
 Single-threaded semantics.
+
+---
+
+# 14. Errors and Program Execution
+
+Runtime errors MUST throw catchable Sigil values. Built-in runtime errors MUST
+use this hash-map shape:
+
+```
+{:type :error/<kind> :message "..."}
+```
+
+The `:type` keyword MUST identify a stable error kind. Required kinds include
+`:error/arithmetic`, `:error/unresolved`, `:error/arity`, `:error/reader`, and
+`:error/type`. The `:message` string MUST be non-empty and stable enough for
+human debugging, but tests SHOULD match primarily on `:type`.
+
+Examples of required runtime errors:
+
+* Division by zero MUST throw `:error/arithmetic`.
+* Resolving an unknown symbol MUST throw `:error/unresolved`.
+* Calling a function with unsupported arity MUST throw `:error/arity`.
+* `read-string` on invalid input MUST throw `:error/reader`.
+* Applying an operation to an unsupported value type MUST throw `:error/type`.
+
+`throw` MAY throw any Sigil value. `try*` catches both user-thrown values and
+built-in runtime error values.
+
+In REPL mode, an uncaught throw MUST print exactly one line using readable
+output with this prefix:
+
+```
+error: <value>
+```
+
+The REPL MUST continue after printing an uncaught throw. In script mode, an
+uncaught throw MUST print the same line to stderr and exit with status code 1.
+A script that completes without an uncaught throw MUST exit with status code 0.
