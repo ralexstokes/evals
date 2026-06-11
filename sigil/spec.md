@@ -162,11 +162,16 @@ Metadata MUST NOT affect equality or hashing.
 
 ## 4.1 Structural Equality (`=`)
 
-* Scalars compare by value.
+* Scalars compare by value, except numbers follow the rules below.
 * Symbols/keywords compare by namespace+name.
-* Lists/vectors compare elementwise in order.
+* Lists and vectors compare as sequential values: they are equal when they
+  have the same length and their elements compare pairwise equal, regardless
+  of whether either operand is a list or a vector.
 * Maps compare by key/value pairs independent of insertion order.
 * Sets compare by membership independent of insertion order.
+* Vars compare by identity, i.e. they are equal only when they are the same Var
+  object. Updating a Var root binding with `def!` or `set!` MUST NOT replace
+  the Var object.
 * Metadata ignored.
 
 ### Numbers
@@ -387,6 +392,14 @@ Given `(op arg1 ... argN)`:
 
 ---
 
+## 8.5 Eagerness
+
+All core functions MUST be eager. Sigil has no lazy sequence type: functions
+such as `map`, `concat`, `rest`, and `seq` MUST compute and return their result
+before returning to the caller.
+
+---
+
 # 9. Special Forms
 
 Supported:
@@ -494,7 +507,12 @@ Define recursive function `SQ(form)`.
 
 `SQ(sym)` → `(quote qualified-sym)`
 
-Unqualified symbols MUST be qualified to current namespace.
+Symbol qualification MUST be determined by resolution:
+
+* Special form names in the authoritative list in §9, plus `ns`, `in-ns`, and
+  `defmacro`, MUST remain unqualified.
+* A symbol that resolves to a Var MUST be qualified to that Var's namespace.
+* A symbol that does not resolve MUST be qualified to the current namespace.
 
 ---
 
@@ -562,6 +580,7 @@ Core namespace MUST provide:
 * `+ - * /`
 * `< <= > >= =`
 * `print println read-string`
+* `not`
 * `inc dec`
 * `zero? pos? neg?`
 * `quot rem mod`
@@ -575,6 +594,11 @@ Core namespace MUST provide:
 * `apply`
 
 Core MUST be auto-referred by `(ns ...)`.
+
+`map` MUST accept a function and one or more collections, apply the function to
+items from each collection in lockstep, stop at the shortest collection, and
+return a list. `concat` MUST return a list. `rest` MUST return a list. `seq`
+MUST return either `nil` or a list.
 
 ---
 
