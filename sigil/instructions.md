@@ -50,9 +50,10 @@ From this `sigil/` directory, the full validation command is:
 ```
 
 The runner builds the candidate with `cargo build --release --locked` (a
-committed `Cargo.lock` is required), runs `cargo +1.96.0 build --release`
-when that toolchain is installed, executes all fixtures below, reports one
-PASS/FAIL line per check, and exits nonzero if any required check fails.
+committed `Cargo.lock` is required), runs an MSRV build with the toolchain
+pinned in `rust-toolchain.toml` when that toolchain is installed, executes
+all fixtures below, reports one PASS/FAIL line per check, and exits nonzero
+if any required check fails.
 
 Every fixture runs under a 30-second timeout (90 seconds per benchmark run);
 a hang is a failure. In addition to the fixed fixtures, the runner generates
@@ -133,7 +134,7 @@ seconds; each individual run is killed after 90 seconds.
 
 * The name of the package itself can just be `sigil`.
 
-* Use Rust 2021 edition. The minimum supported Rust version is 1.96.0.
+* Use Rust 2021 edition. The minimum supported Rust version is the toolchain pinned in `rust-toolchain.toml`.
 
 * Use persistent data structures for `list`, `vector`, `hash-map`, and `hash-set` types.
 

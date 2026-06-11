@@ -89,14 +89,17 @@ else
   fail "cargo build --release"
 fi
 
-if cargo +1.96.0 --version >/dev/null 2>&1; then
-  if (cd "$CANDIDATE_DIR" && with_timeout "$BUILD_TIMEOUT_SECS" cargo +1.96.0 build --release $LOCKED >/dev/null); then
-    pass "cargo +1.96.0 build --release"
+MSRV=$(sed -n 's/^channel = "\(.*\)"$/\1/p' "$SIGIL_DIR/rust-toolchain.toml")
+if [ -z "$MSRV" ]; then
+  warn "could not read channel from rust-toolchain.toml; skipped MSRV check"
+elif cargo +"$MSRV" --version >/dev/null 2>&1; then
+  if (cd "$CANDIDATE_DIR" && with_timeout "$BUILD_TIMEOUT_SECS" cargo +"$MSRV" build --release $LOCKED >/dev/null); then
+    pass "cargo +$MSRV build --release"
   else
-    fail "cargo +1.96.0 build --release"
+    fail "cargo +$MSRV build --release"
   fi
 else
-  warn "cargo +1.96.0 unavailable; skipped MSRV check"
+  warn "cargo +$MSRV unavailable; skipped MSRV check"
 fi
 
 run_case() {
