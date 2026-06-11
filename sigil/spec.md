@@ -62,7 +62,8 @@ Supported escapes:
 * `\n`, `\t`, `\\`, `\"`
 * `\uXXXX` (4 hex digits)
 
-Invalid escape → reader error.
+Invalid escape → reader error. A `\uXXXX` escape in the surrogate range
+`D800` through `DFFF` MUST produce a reader error.
 
 ### 2.2.3 Characters
 
@@ -70,7 +71,8 @@ Invalid escape → reader error.
 * `\newline`, `\space`, `\tab`
 * `\uXXXX`
 
-Invalid form → reader error.
+Invalid form → reader error. A `\uXXXX` character in the surrogate range
+`D800` through `DFFF` MUST produce a reader error.
 
 ---
 
@@ -333,13 +335,14 @@ returns `nil`.
 
 ---
 
-## 6.2 Special Forms
+## 6.2 Namespace Forms
 
 ### `(ns name)`
 
 * Sets current namespace.
 * Creates if missing.
-* MUST auto-refer core namespace.
+* Core remains available through the resolution fallback in §6.3; `(ns ...)`
+  MUST NOT copy core Vars into the target namespace.
 
 ### `(in-ns 'name)`
 
@@ -365,6 +368,11 @@ A Var contains:
 ### `(var sym)`
 
 Returns Var object.
+
+### Dereferencing Vars
+
+`(deref var)` and `@var` MUST return the Var's current root binding when their
+operand is a Var.
 
 ### Resolution
 
@@ -471,10 +479,15 @@ before returning to the caller.
 
 Supported:
 
+This list is authoritative for recognizing special forms during list evaluation
+and syntax-quote symbol qualification.
+
 * `quote`
 * `if`
 * `do`
 * `def!`
+* `ns`
+* `in-ns`
 * `let*`
 * `fn*`
 * `loop*`
@@ -483,6 +496,7 @@ Supported:
 * `try*`
 * `var`
 * `set!`
+* `defmacro`
 
 ---
 
@@ -509,7 +523,8 @@ Sequential binding.
 ## 9.4 `loop*` and `recur`
 
 * `recur` MUST appear in tail position.
-* Arity must match.
+* `recur` targets the nearest enclosing `loop*` bindings or `fn*` parameters.
+* Arity must match the target's binding or parameter count.
 * Must not grow stack.
 
 ---
@@ -657,16 +672,49 @@ Core namespace MUST provide:
 * `macroexpand macroexpand-1`
 * `list vec map set seq`
 * `first rest nth concat`
+* `get`
 * `eval`
 * `apply`
 * `alias`
 
-Core MUST be auto-referred by `(ns ...)`.
+The core namespace MUST be available through the resolution fallback described
+in §6.3.
 
 `map` MUST accept a function and one or more collections, apply the function to
 items from each collection in lockstep, stop at the shortest collection, and
 return a list. `concat` MUST return a list. `rest` MUST return a list. `seq`
 MUST return either `nil` or a list.
+
+Collection functions operate on these sequenceable values:
+
+* `nil` is empty.
+* Lists and vectors are traversed in element order.
+* Strings are traversed as characters.
+* Maps are traversed as two-element vectors `[k v]`, sorted by the readable
+  representation of `k`.
+* Sets are traversed as elements sorted by readable representation.
+
+`first` returns `nil` for `nil` or an empty collection. `rest` returns `()` for
+`nil` or an empty collection. `seq` returns `nil` for `nil` or an empty
+collection, otherwise it returns a list.
+
+`nth` accepts two or three arguments: `(nth coll index)` and
+`(nth coll index default)`. `index` MUST be a non-negative integer. If `index`
+is in bounds, `nth` returns the item at that zero-based position in the
+sequenceable view of `coll`. If `index` is out of bounds and a default is
+provided, `nth` returns the default. If `index` is out of bounds without a
+default, `nth` throws `:error/index`.
+
+`get` accepts two or three arguments: `(get coll key)` and
+`(get coll key default)`. For maps, it returns the value for `key` or the
+default. For sets, it returns the equal set element or the default. For `nil`,
+it returns the default. If no default is supplied, the default is `nil`.
+Calling `get` on any other type throws `:error/type`. Keywords and maps MUST
+NOT be callable as functions.
+
+`read-string` MUST read the first complete form from its string argument and
+ignore trailing input. An empty or whitespace-only string MUST throw
+`:error/reader`.
 
 ---
 
@@ -692,8 +740,8 @@ use this hash-map shape:
 
 The `:type` keyword MUST identify a stable error kind. Required kinds include
 `:error/arithmetic`, `:error/unresolved`, `:error/arity`, `:error/reader`, and
-`:error/type`. The `:message` string MUST be non-empty and stable enough for
-human debugging, but tests SHOULD match primarily on `:type`.
+`:error/type`, and `:error/index`. The `:message` string MUST be non-empty and
+stable enough for human debugging, but tests SHOULD match primarily on `:type`.
 
 Examples of required runtime errors:
 
@@ -702,6 +750,7 @@ Examples of required runtime errors:
 * Calling a function with unsupported arity MUST throw `:error/arity`.
 * `read-string` on invalid input MUST throw `:error/reader`.
 * Applying an operation to an unsupported value type MUST throw `:error/type`.
+* Accessing an out-of-bounds sequence index MUST throw `:error/index`.
 
 `throw` MAY throw any Sigil value. `try*` catches both user-thrown values and
 built-in runtime error values.
@@ -716,3 +765,7 @@ error: <value>
 The REPL MUST continue after printing an uncaught throw. In script mode, an
 uncaught throw MUST print the same line to stderr and exit with status code 1.
 A script that completes without an uncaught throw MUST exit with status code 0.
+
+The core namespace MUST contain the Var `*command-line-args*`. In script mode,
+its root binding MUST be a vector of strings containing the arguments after the
+script path. In REPL mode, its root binding MUST be `nil`.

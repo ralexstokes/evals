@@ -50,7 +50,10 @@ Find the lowest-hanging fruit(s) in terms of performance and fix those.
 
 * Use persistent data structures for `list`, `vector`, `hash-map`, and `hash-set` types.
 
-* The `core` namespace MUST only contain the names in the spec and no others.
+* The `core` namespace MUST only contain the Vars named by the spec's Core
+  Required Functions section plus spec-defined runtime Vars such as
+  `*command-line-args*`. Special forms are recognized from the spec's Special
+  Forms list and are not core Vars.
 
 * The REPL should have history and Emacs like keybindings for navigation at the prompt.
 
